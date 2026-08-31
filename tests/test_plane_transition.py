@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from plane_transition import is_backward  # noqa: E402
+from plane_transition import is_backward
 
 
 def test_forward_transition_allowed():
