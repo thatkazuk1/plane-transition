@@ -217,7 +217,7 @@ new repo's `identifier-prefixes`.
 
 ### Repo Activity
 
-[![Commit Activity](https://img.shields.io/github/commit-activity/m/thatkazuk1/plane-transition)](https://github.com/thatkazuk1/plane-transition/commits/main)
+[![Commit Activity](https://img.shields.io/github/commit-activity/m/thatkazuk1/plane-transition)](https://github.com/thatkazuk1/plane-transition/commits/master)
 
 ## License
 
