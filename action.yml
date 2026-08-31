@@ -54,7 +54,7 @@ runs:
   # Pinned to the published image's immutable digest rather than building
   # from Dockerfile at each use — consumers pin this action to a git ref
   # (e.g. @v1.0.1), and that ref always resolves to this exact image.
-  image: "docker://ghcr.io/thatkazuk1/plane-transition@sha256:70af95152f8a39b3592af5a5761c8f11677483e9384e5efa4ac604deb2d8a768"
+  image: "docker://ghcr.io/thatkazuk1/plane-transition@sha256:ebddf94a0beaa12a4cb94dc76a01392eee2f19b0238e982e44ab82aad09fee8f"
   env:
     PLANE_BASE_URL: ${{ inputs.plane-base-url }}
     PLANE_WORKSPACE_SLUG: ${{ inputs.plane-workspace-slug }}
