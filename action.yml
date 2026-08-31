@@ -40,6 +40,10 @@ inputs:
     description: "Fail the step on hard errors (network/auth/unresolvable state); 404-skips never fail"
     required: false
     default: "false"
+  pr-url:
+    description: "PR URL to attach as a link on each transitioned work item (empty = don't link)"
+    required: false
+    default: ""
 
 outputs:
   transitioned:
@@ -62,6 +66,7 @@ runs:
     PT_REQUIRE_KEYWORD: ${{ inputs.require-keyword }}
     PT_DRY_RUN: ${{ inputs.dry-run }}
     PT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+    PT_PR_URL: ${{ inputs.pr-url }}
 
 branding:
   icon: "git-merge"

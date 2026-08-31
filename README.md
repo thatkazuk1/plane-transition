@@ -9,6 +9,7 @@ Scan text for Plane work-item references and transition them on merge.
 - [Usage](#usage)
   - [GitHub Actions](#github-actions)
   - [Forgejo Actions](#forgejo-actions)
+  - [Also: PR opened → In Progress](#also-pr-opened--in-progress)
   - [Inputs](#inputs)
   - [Output](#output)
 - [Getting Started](#getting-started)
@@ -116,6 +117,40 @@ jobs:
             ghcr.io/thatkazuk1/plane-transition:v1
 ```
 
+### Also: PR opened → In Progress
+
+The same action handles other trigger points — just a different job (or a second workflow)
+listening to `types: [opened, reopened]` instead of `[closed]`, with different `keywords` and
+`target-state`:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, reopened]
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: thatkazuk1/plane-transition@v1
+        with:
+          plane-base-url: https://plane.kazuki.uk
+          plane-workspace-slug: shokunbi
+          plane-api-token: ${{ secrets.PLANE_API_TOKEN }}
+          identifier-prefixes: HOMELABSTA
+          target-state: started
+          keywords: start,starts,started
+          pr-url: ${{ github.event.pull_request.html_url }}
+          text: |
+            ${{ github.event.pull_request.title }}
+
+            ${{ github.event.pull_request.body }}
+```
+
+Nothing in `plane-transition` needs to change for this — `target-state`, `keywords`, and
+`pr-url` are all just config. One safety net is built in: the tool refuses to move a work item
+*backward* in the workflow (`backlog < unstarted < started < completed/cancelled`). A stale
+`Starts FOO-1` PR reopened after `FOO-1` is already Done won't drag it back to In Progress.
+
 ### Inputs
 
 | env | `action.yml` input | required | default |
@@ -130,16 +165,23 @@ jobs:
 | `PT_REQUIRE_KEYWORD` | `require-keyword` | no | `true` |
 | `PT_DRY_RUN` | `dry-run` | no | `false` |
 | `PT_FAIL_ON_ERROR` | `fail-on-error` | no | `false` |
+| `PT_PR_URL` | `pr-url` | no | *(empty ⇒ don't link)* |
 
 If `PLANE_API_TOKEN` is empty, the tool prints `no token, skipping` and exits 0 rather than
 failing — this lets a repo mirror without the secret configured no-op safely instead of
 breaking CI. The token itself is never logged, in any code path.
 
+If `pr-url` is set, it's attached as a link on each transitioned (or already-in-target-state)
+work item — checked against existing links first, so re-runs don't create duplicates. A link
+failure is logged but never fails the run; it's a best-effort enrichment, not the tool's core
+job.
+
 ### Output
 
-`transitioned` — a JSON array of `{identifier, from_state, to_state, status, dry_run}`. A
-human-readable summary is also written to `$GITHUB_STEP_SUMMARY` when that env var is set (both
-GitHub and Forgejo Actions set it).
+`transitioned` — a JSON array of `{identifier, from_state, to_state, status, dry_run}`, where
+`status` is one of `transitioned`, `already_in_state`, `skipped_not_found`, `skipped_backward`,
+or `error`. A human-readable summary is also written to `$GITHUB_STEP_SUMMARY` when that env var
+is set (both GitHub and Forgejo Actions set it).
 
 ## Getting Started
 

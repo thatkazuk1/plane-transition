@@ -11,11 +11,31 @@ import os
 import sys
 
 from plane import HttpError, PlaneClient
-from plane.models.work_items import UpdateWorkItem
+from plane.models.work_items import CreateWorkItemLink, UpdateWorkItem
 
 from parse import DEFAULT_KEYWORDS, parse
 
 STATE_GROUPS = {"backlog", "unstarted", "started", "completed", "cancelled"}
+
+# Ordinal position of each state group in the workflow. Used to refuse a
+# transition that would move a work item backward (e.g. a stale "Starts
+# FOO-1" PR reopened after FOO-1 is already Done shouldn't drag it back to
+# In Progress).
+GROUP_ORDER = {
+    "backlog": 0,
+    "unstarted": 1,
+    "started": 2,
+    "completed": 3,
+    "cancelled": 3,
+}
+
+
+def is_backward(current_group: str | None, target_group: str | None) -> bool:
+    """True if current_group -> target_group would move backward in the
+    workflow. Unknown/missing groups never block (fail open)."""
+    if current_group is None or target_group is None:
+        return False
+    return GROUP_ORDER.get(current_group, -1) > GROUP_ORDER.get(target_group, -1)
 
 
 def _bool_env(name: str, default: bool) -> bool:
@@ -49,6 +69,23 @@ def resolve_target_state(states: list, target: str) -> str:
     raise ValueError(f"Could not resolve target state {target!r} against available states")
 
 
+def _attach_pr_link(
+    client: PlaneClient, workspace_slug: str, project_id: str, work_item_id: str, pr_url: str, identifier: str
+) -> None:
+    """Best-effort: attach pr_url as a link on the work item, unless already
+    linked. Never raises - a link failure shouldn't fail the transition."""
+    try:
+        existing = client.work_items.links.list(workspace_slug, project_id, work_item_id)
+        if any(link.url == pr_url for link in existing.results):
+            return
+        client.work_items.links.create(
+            workspace_slug, project_id, work_item_id, CreateWorkItemLink(url=pr_url, title="Linked PR")
+        )
+        print(f"{identifier}: linked PR")
+    except HttpError as e:
+        print(f"{identifier}: could not link PR (status {e.status_code})", file=sys.stderr)
+
+
 def run() -> int:
     token = os.environ.get("PLANE_API_TOKEN", "")
     fail_on_error = _bool_env("PT_FAIL_ON_ERROR", False)
@@ -65,6 +102,7 @@ def run() -> int:
     keywords = _list_env("PT_KEYWORDS", DEFAULT_KEYWORDS)
     require_keyword = _bool_env("PT_REQUIRE_KEYWORD", True)
     dry_run = _bool_env("PT_DRY_RUN", False)
+    pr_url = os.environ.get("PT_PR_URL", "").strip()
 
     if not workspace_slug:
         print("PLANE_WORKSPACE_SLUG is required", file=sys.stderr)
@@ -76,7 +114,7 @@ def run() -> int:
 
     results = []
     hard_error = False
-    state_cache: dict[str, tuple[str, list]] = {}
+    state_cache: dict[str, tuple[str, dict]] = {}
 
     for prefix, seq in refs:
         identifier = f"{prefix}-{seq}"
@@ -110,9 +148,12 @@ def run() -> int:
                 results.append({"identifier": identifier, "status": "error"})
                 hard_error = True
                 continue
-            state_cache[project_id] = (target_uuid, states_response.results)
+            state_by_id = {s.id: s for s in states_response.results}
+            state_cache[project_id] = (target_uuid, state_by_id)
 
-        target_uuid, _states = state_cache[project_id]
+        target_uuid, state_by_id = state_cache[project_id]
+        target_group = state_by_id[target_uuid].group
+        current_group = state_by_id[current_state].group if current_state in state_by_id else None
 
         if current_state == target_uuid:
             print(f"{identifier}: already in target state")
@@ -122,6 +163,21 @@ def run() -> int:
                     "from_state": current_state,
                     "to_state": target_uuid,
                     "status": "already_in_state",
+                    "dry_run": dry_run,
+                }
+            )
+            if pr_url and not dry_run:
+                _attach_pr_link(client, workspace_slug, project_id, work_item.id, pr_url, identifier)
+            continue
+
+        if is_backward(current_group, target_group):
+            print(f"{identifier}: skipped (would move backward: {current_group} -> {target_group})")
+            results.append(
+                {
+                    "identifier": identifier,
+                    "from_state": current_state,
+                    "to_state": target_uuid,
+                    "status": "skipped_backward",
                     "dry_run": dry_run,
                 }
             )
@@ -148,6 +204,8 @@ def run() -> int:
                 "dry_run": dry_run,
             }
         )
+        if pr_url and not dry_run:
+            _attach_pr_link(client, workspace_slug, project_id, work_item.id, pr_url, identifier)
 
     output = json.dumps(results)
     print(f"transitioned={output}")
