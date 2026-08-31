@@ -63,7 +63,7 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - uses: thatkazuk1/plane-transition@v1   # pin to a digest in production
+      - uses: thatkazuk1/plane-transition@v1.0.1   # or a commit SHA, for a harder pin
         with:
           plane-base-url: https://plane.kazuki.uk
           plane-workspace-slug: shokunbi
@@ -75,6 +75,11 @@ jobs:
 
             ${{ github.event.pull_request.body }}
 ```
+
+`uses:` pins a git ref (tag/branch/SHA) of *this* repo, not a container image — `action.yml`'s
+`runs.image` is itself pinned to the published `ghcr.io` image's immutable digest, so any tag
+you reference always resolves to the same container. Don't put an image digest directly on the
+`uses:` line; GitHub/Forgejo can't resolve that as a ref.
 
 ### Forgejo Actions
 
