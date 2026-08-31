@@ -4,5 +4,4 @@ RUN pip install --no-cache-dir plane-sdk==0.2.23
 
 COPY src/ /app/src/
 
-WORKDIR /app/src
-ENTRYPOINT ["python", "plane_transition.py"]
+ENTRYPOINT ["python", "/app/src/plane_transition.py"]
