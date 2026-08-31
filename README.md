@@ -63,7 +63,7 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - uses: thatkazuk1/plane-transition@v1.0.1   # or a commit SHA, for a harder pin
+      - uses: thatkazuk1/plane-transition@v1   # or an exact vX.Y.Z tag, for a harder pin
         with:
           plane-base-url: https://plane.kazuki.uk
           plane-workspace-slug: shokunbi
