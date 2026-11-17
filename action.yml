@@ -44,6 +44,14 @@ inputs:
     description: "PR URL to attach as a link on each transitioned work item (empty = don't link)"
     required: false
     default: ""
+  cf-access-client-id:
+    description: "Cloudflare Access service-token Client ID, for a Plane host behind Access (empty = not used)"
+    required: false
+    default: ""
+  cf-access-client-secret:
+    description: "Cloudflare Access service-token Client Secret (set together with cf-access-client-id)"
+    required: false
+    default: ""
 
 outputs:
   transitioned:
@@ -67,6 +75,8 @@ runs:
     PT_DRY_RUN: ${{ inputs.dry-run }}
     PT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
     PT_PR_URL: ${{ inputs.pr-url }}
+    CF_ACCESS_CLIENT_ID: ${{ inputs.cf-access-client-id }}
+    CF_ACCESS_CLIENT_SECRET: ${{ inputs.cf-access-client-secret }}
 
 branding:
   icon: "git-merge"
