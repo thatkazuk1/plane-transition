@@ -59,10 +59,10 @@ outputs:
 
 runs:
   using: "docker"
-  # Pinned to the published image's immutable digest rather than building
-  # from Dockerfile at each use — consumers pin this action to a git ref
-  # (e.g. @v1.0.1), and that ref always resolves to this exact image.
-  image: "docker://ghcr.io/thatkazuk1/plane-transition@sha256:ebddf94a0beaa12a4cb94dc76a01392eee2f19b0238e982e44ab82aad09fee8f"
+  # INTERIM, branch only. Do not merge this line to master.
+  # The image is built from Dockerfile at each use. Consumers pin the full
+  # commit SHA of this branch. The release flow restores the digest pin.
+  image: "Dockerfile"
   env:
     PLANE_BASE_URL: ${{ inputs.plane-base-url }}
     PLANE_WORKSPACE_SLUG: ${{ inputs.plane-workspace-slug }}
