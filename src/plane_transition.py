@@ -11,6 +11,7 @@ import os
 import sys
 
 from plane import HttpError, PlaneClient
+from plane.api.base_resource import BaseResource
 from plane.models.work_items import CreateWorkItemLink, UpdateWorkItem
 
 from parse import DEFAULT_KEYWORDS, parse
@@ -50,6 +51,29 @@ def _list_env(name: str, default: tuple[str, ...] = ()) -> list[str]:
     if value is None or value.strip() == "":
         return list(default)
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def access_headers(client_id: str, client_secret: str) -> dict[str, str]:
+    """Cloudflare Access service-token headers, or {} unless both values are set."""
+    client_id = client_id.strip()
+    client_secret = client_secret.strip()
+    if not client_id or not client_secret:
+        return {}
+    return {"CF-Access-Client-Id": client_id, "CF-Access-Client-Secret": client_secret}
+
+
+def install_access_headers(extra: dict[str, str]) -> None:
+    """Make every SDK request carry the extra headers. The SDK has no header option."""
+    if not extra:
+        return
+    original = BaseResource._headers
+
+    def _headers(self: BaseResource) -> dict[str, str]:
+        headers = original(self)
+        headers.update(extra)
+        return headers
+
+    BaseResource._headers = _headers  # type: ignore[method-assign]
 
 
 def resolve_target_state(states: list, target: str) -> str:
@@ -109,6 +133,12 @@ def run() -> int:
         return 1 if fail_on_error else 0
 
     refs = parse(text, keywords=keywords, require_keyword=require_keyword, prefixes=prefixes or None)
+
+    cf_id = os.environ.get("CF_ACCESS_CLIENT_ID", "")
+    cf_secret = os.environ.get("CF_ACCESS_CLIENT_SECRET", "")
+    if bool(cf_id.strip()) != bool(cf_secret.strip()):
+        print("CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET must both be set; ignoring", file=sys.stderr)
+    install_access_headers(access_headers(cf_id, cf_secret))
 
     client = PlaneClient(base_url=base_url, api_key=token)
 

@@ -166,6 +166,14 @@ Nothing in `plane-transition` needs to change for this — `target-state`, `keyw
 | `PT_DRY_RUN` | `dry-run` | no | `false` |
 | `PT_FAIL_ON_ERROR` | `fail-on-error` | no | `false` |
 | `PT_PR_URL` | `pr-url` | no | *(empty ⇒ don't link)* |
+| `CF_ACCESS_CLIENT_ID` | `cf-access-client-id` | no | *(empty ⇒ not used)* |
+| `CF_ACCESS_CLIENT_SECRET` | `cf-access-client-secret` | no | *(empty ⇒ not used)* |
+
+If the Plane host sits behind Cloudflare Access, create an Access service token, add a
+**Service Auth** policy for it on the Plane application, and pass both values as secrets.
+The tool then sends the `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers on every
+request. If only one of the two values is set, the tool prints a warning and sends neither.
+The secret is never logged.
 
 If `PLANE_API_TOKEN` is empty, the tool prints `no token, skipping` and exits 0 rather than
 failing — this lets a repo mirror without the secret configured no-op safely instead of
